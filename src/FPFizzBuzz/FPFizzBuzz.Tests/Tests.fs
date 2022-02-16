@@ -1,7 +1,5 @@
 module Tests
 
-open System
-open FPFizzBuzz
 open Xunit
 
 [<Fact>]
