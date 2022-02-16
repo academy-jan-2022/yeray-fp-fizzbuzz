@@ -1,5 +1,4 @@
-﻿namespace FPFizzBuzz
+﻿module FizzBuzz
 
-module FizzBuzz =
-  let convert number =
-    failwith "TODO"
+let convert number =
+  failwith "TODO"
