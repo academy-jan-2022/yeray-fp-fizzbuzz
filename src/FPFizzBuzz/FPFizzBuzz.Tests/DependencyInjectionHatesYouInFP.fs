@@ -65,19 +65,21 @@ type UserWithSSN = { ID: int; SocialSecurityNumber: int }
 
 type QueryRunner = string -> int
 
-let mapFreeRunner (mapper: 'a -> 'b) (input: QueryRunner -> 'a): QueryRunner -> 'b =
+type QueryDependency<'a> = QueryRunner -> 'a
+
+let mapFreeRunner (mapper: 'a -> 'b) (input: QueryDependency<'a>): QueryDependency<'b> =
   (fun (queryRunner: QueryRunner) ->
     queryRunner
     |> input
     |> mapper
   )
 
-let bindFreeRunner  (binder: 'a -> QueryRunner -> 'b) (input: QueryRunner -> 'a): QueryRunner -> 'b =
+let bindFreeRunner  (binder: 'a -> QueryDependency<'b>) (input: QueryDependency<'a>): QueryDependency<'b> =
   (fun (queryRunner: QueryRunner) ->
     mapFreeRunner binder input queryRunner queryRunner
   )
 
-let findUserFree email =
+let findUserFree email : QueryDependency<User> =
   (fun (queryRunner: QueryRunner) ->
     { ID = queryRunner $"SELECT ID FROM Users WHERE Email = '{email}'" }
   )
@@ -91,3 +93,22 @@ let findUserWithSSNFree (user: User) =
 let freeUserWithSSn =
   findUserFree "frank@email.com"
   |> bindFreeRunner findUserWithSSNFree
+
+type QueryDependencyBuilder() =
+  member x.Bind(comp, func) = bindFreeRunner func comp
+  member x.Return(a) = (fun (queryRunner: QueryRunner) -> a)
+  member x.ReturnFrom(comp) = comp
+
+let queryDependency = QueryDependencyBuilder()
+
+let result =
+  queryDependency {
+    let! user = findUserFree "john@email.com"
+    let! userWithSSN = findUserWithSSNFree user
+    return userWithSSN
+  }
+
+let runnerMock _ = 0
+
+
+let userWithSSN = result runnerMock
