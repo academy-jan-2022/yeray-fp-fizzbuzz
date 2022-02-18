@@ -67,6 +67,8 @@ type QueryRunner = string -> int
 
 type QueryDependency<'a> = QueryRunner -> 'a
 
+
+
 let mapFreeRunner (mapper: 'a -> 'b) (input: QueryDependency<'a>): QueryDependency<'b> =
   (fun (queryRunner: QueryRunner) ->
     queryRunner
@@ -96,8 +98,20 @@ let freeUserWithSSn =
 
 type QueryDependencyBuilder() =
   member x.Bind(comp, func) = bindFreeRunner func comp
-  member x.Return(a) = (fun (queryRunner: QueryRunner) -> a)
+  member x.Return(a) = (fun (_: QueryRunner) -> a)
   member x.ReturnFrom(comp) = comp
+
+type AsyncQueryDep<'a> = Async<QueryDependency<'a>>
+
+type AsyncQueryDepBuilder() =
+  member x.Bind(comp: AsyncQueryDep<'a>, func) =
+    async {
+      let! queryDep = comp
+      return bindFreeRunner func queryDep
+    }
+
+
+
 
 let queryDependency = QueryDependencyBuilder()
 
