@@ -1,0 +1,93 @@
+﻿module DependencyInjectionHatesYouInFP
+
+module Settings =
+  type MySettings = { DatabaseConnectionString: string }
+
+  let getSettings (settingsFileName: string) =
+    { DatabaseConnectionString = "banana" }
+
+module DatabaseAccess =
+  let runQuery (settingsGetter: unit -> Settings.MySettings) (query: string) =
+    0
+
+module UserRepository =
+  type User = { ID: int }
+
+  let findUser (queryRunner: string -> int) (email: string) =
+    let resultingId = queryRunner $"SELECT ID FROM Users WHERE Email = '{email}'"
+    { ID = resultingId }
+
+let user =
+  UserRepository.findUser
+    (DatabaseAccess.runQuery (fun () -> Settings.getSettings "settings.json"))
+    "user@email.com"
+
+module ProductionCompositionalRoot =
+  module Settings =
+    let getSettings () =
+      Settings.getSettings "settings.json"
+
+  module DatabaseAccess =
+    let runQuery query =
+      DatabaseAccess.runQuery Settings.getSettings query
+
+  module UserRepository =
+    let findUser email =
+      UserRepository.findUser DatabaseAccess.runQuery email
+
+
+#if ISTESTING
+module CompositionalRoot = TestCompositionalRoot
+#else
+module CompositionalRoot = ProductionCompositionalRoot
+#endif
+
+let user2 = CompositionalRoot.UserRepository.findUser "user@email.com"
+
+let maybeJuan = None
+let maybeJohn = Some "John"
+
+let maybeTwoNames =
+  maybeJuan
+  |> Option.bind (fun juan -> maybeJohn |> Option.map (fun john -> $"{juan}{john}"))
+
+open FsToolkit.ErrorHandling
+
+let easyMaybeTwoNames =
+  option {
+    let! juan = maybeJuan
+    let! john = maybeJohn
+    return $"{juan}{john}"
+  }
+
+type User = { ID: int }
+type UserWithSSN = { ID: int; SocialSecurityNumber: int }
+
+type QueryRunner = string -> int
+
+let mapFreeRunner (mapper: 'a -> 'b) (input: QueryRunner -> 'a): QueryRunner -> 'b =
+  (fun (queryRunner: QueryRunner) ->
+    queryRunner
+    |> input
+    |> mapper
+  )
+
+let bindFreeRunner  (binder: 'a -> QueryRunner -> 'b) (input: QueryRunner -> 'a): QueryRunner -> 'b =
+  (fun (queryRunner: QueryRunner) ->
+    mapFreeRunner binder input queryRunner queryRunner
+  )
+
+let findUserFree email =
+  (fun (queryRunner: QueryRunner) ->
+    { ID = queryRunner $"SELECT ID FROM Users WHERE Email = '{email}'" }
+  )
+
+let findUserWithSSNFree (user: User) =
+  (fun (queryRunner: QueryRunner) ->
+    { ID = user.ID
+      SocialSecurityNumber = queryRunner $"SELECT ssn FROM SocialSecNums WHERE UserID = {user.ID}" }
+  )
+
+let freeUserWithSSn =
+  findUserFree "frank@email.com"
+  |> bindFreeRunner findUserWithSSNFree
