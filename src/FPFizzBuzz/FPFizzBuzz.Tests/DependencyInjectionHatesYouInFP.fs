@@ -68,29 +68,21 @@ type QueryRunner = string -> int
 type QueryDependency<'a> = QueryRunner -> 'a
 
 
-
-let mapFreeRunner (mapper: 'a -> 'b) (input: QueryDependency<'a>): QueryDependency<'b> =
-  (fun (queryRunner: QueryRunner) ->
+let mapFreeRunner (mapper: 'a -> 'b) (input: QueryDependency<'a>) (queryRunner: QueryRunner) =
     queryRunner
     |> input
     |> mapper
-  )
 
-let bindFreeRunner  (binder: 'a -> QueryDependency<'b>) (input: QueryDependency<'a>): QueryDependency<'b> =
-  (fun (queryRunner: QueryRunner) ->
-    mapFreeRunner binder input queryRunner queryRunner
-  )
+let bindFreeRunner  (binder: 'a -> QueryDependency<'b>) (input: QueryDependency<'a>) (queryRunner: QueryRunner) =
+    let bound = mapFreeRunner binder input queryRunner
+    bound queryRunner
 
-let findUserFree email : QueryDependency<User> =
-  (fun (queryRunner: QueryRunner) ->
+let findUserFree email (queryRunner: QueryRunner) =
     { ID = queryRunner $"SELECT ID FROM Users WHERE Email = '{email}'" }
-  )
 
-let findUserWithSSNFree (user: User) =
-  (fun (queryRunner: QueryRunner) ->
+let findUserWithSSNFree (user: User) (queryRunner: QueryRunner) =
     { ID = user.ID
       SocialSecurityNumber = queryRunner $"SELECT ssn FROM SocialSecNums WHERE UserID = {user.ID}" }
-  )
 
 
 
