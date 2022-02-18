@@ -92,9 +92,7 @@ let findUserWithSSNFree (user: User) =
       SocialSecurityNumber = queryRunner $"SELECT ssn FROM SocialSecNums WHERE UserID = {user.ID}" }
   )
 
-let freeUserWithSSn =
-  findUserFree "frank@email.com"
-  |> bindFreeRunner findUserWithSSNFree
+
 
 type QueryDependencyBuilder() =
   member x.Bind(comp, func) = bindFreeRunner func comp
@@ -110,12 +108,12 @@ type AsyncQueryDepBuilder() =
       return bindFreeRunner func queryDep
     }
 
-
-
-
 let queryDependency = QueryDependencyBuilder()
+let freeUserWithSSn: QueryDependency<UserWithSSN> =
+  findUserFree "john@email.com"
+  |> bindFreeRunner findUserWithSSNFree
 
-let result =
+let freeUserWithSSnWithCE: QueryDependency<UserWithSSN> =
   queryDependency {
     let! user = findUserFree "john@email.com"
     let! userWithSSN = findUserWithSSNFree user
@@ -124,5 +122,5 @@ let result =
 
 let runnerMock _ = 0
 
-
-let userWithSSN = result runnerMock
+let userWithSSNfromCE: UserWithSSN = freeUserWithSSnWithCE runnerMock
+let userWithSSN: UserWithSSN = freeUserWithSSn runnerMock
