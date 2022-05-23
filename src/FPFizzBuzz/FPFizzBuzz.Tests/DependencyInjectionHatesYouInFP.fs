@@ -67,13 +67,16 @@ type QueryRunner = string -> int
 
 type QueryDependency<'a> = QueryRunner -> 'a
 
+type PortContainer =
+  { QueryRunner: QueryRunner
+    ReadOnlyQueryRunner: QueryRunner }
 
 let mapFreeRunner (mapper: 'a -> 'b) (input: QueryDependency<'a>) (queryRunner: QueryRunner) =
     queryRunner
     |> input
     |> mapper
 
-let bindFreeRunner  (binder: 'a -> QueryDependency<'b>) (input: QueryDependency<'a>) (queryRunner: QueryRunner) =
+let bindFreeRunner (binder: 'a -> QueryDependency<'b>) (input: QueryDependency<'a>) (queryRunner: QueryRunner) =
     let bound = mapFreeRunner binder input queryRunner
     bound queryRunner
 
@@ -83,8 +86,6 @@ let findUserFree email (queryRunner: QueryRunner) =
 let findUserWithSSNFree (user: User) (queryRunner: QueryRunner) =
     { ID = user.ID
       SocialSecurityNumber = queryRunner $"SELECT ssn FROM SocialSecNums WHERE UserID = {user.ID}" }
-
-
 
 type QueryDependencyBuilder() =
   member x.Bind(comp, func) = bindFreeRunner func comp
@@ -110,6 +111,12 @@ let freeUserWithSSnWithCE: QueryDependency<UserWithSSN> =
     let! user = findUserFree "john@email.com"
     let! userWithSSN = findUserWithSSNFree user
     return userWithSSN
+  }
+
+let banana =
+  queryDependency {
+    let! that = freeUserWithSSn
+    return that
   }
 
 let runnerMock _ = 0

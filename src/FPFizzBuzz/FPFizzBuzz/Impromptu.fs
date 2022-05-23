@@ -58,6 +58,29 @@ let elevate (maybeUser: User option) : Result<User, DomainError> =
   match maybeUser with
   | Some user -> Ok user
   | None -> Error <| NotFound ("User not found", "")
+  
+type WebResponse =
+  { Code: int
+    Content: string }
+
+let mapError =
+  function
+  | NotFound(entityName, searchParameter) ->
+    { Code = 404; Content = $"Could not find {entityName} with {searchParameter}" }
+  | DependencyFailed(dependencyName, errorMessage) ->
+    { Code = 500; Content = $"Dependency {dependencyName} failed with error: {errorMessage}" }
+  | DependencyNotResponding depencendyName ->
+    { Code = 500; Content = $"Dependency {depencendyName}" }
+  | Unauthorized permission ->
+    match permission with
+    | ReadReport -> { Code = 401; Content = "Can't read this report" }
+    | ReadUser -> { Code = 401; Content = "Can't access this user data" }
+    | ReadSecureReport -> { Code = 401; Content = "Missing permissions to read a secure report" }
+
+let serialize a = { Code = 200; Content = a.ToString() }
+
+let toWebResponse =
+  Async.map (function | Ok v -> serialize v | Error e -> mapError e)
 
 let reportsOrError =
   asyncResult {
@@ -72,9 +95,6 @@ let reportsOrError =
         boyleSecondReport
         peraltaFirstReport
         peraltaSecondReport ]
-  } |> Async.RunSynchronously
-
-let defaultReport = { Content = "Report content"; ID = 1 }
-let defaulted =
-  reportsOrError
-  |> Result.defaultValue [defaultReport]
+  }
+  |> toWebResponse
+  |> Async.RunSynchronously

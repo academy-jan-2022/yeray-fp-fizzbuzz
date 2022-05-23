@@ -10,11 +10,13 @@
 
     <ItemGroup>
         <Compile Include="DependencyInjectionHatesYouInFP.fs" />
+        <Compile Include="FreeMonad.fs" />
         <Compile Include="Tests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Chessie" Version="0.6.0" />
         <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
         <PackageReference Include="xunit" Version="2.4.1" />
